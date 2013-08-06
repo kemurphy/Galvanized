@@ -21,6 +21,12 @@ extern {
     fn jit_insn_return(function: *c_void, value: *c_void);
     fn jit_function_apply(function: *c_void, args: **c_void, return_area: *mut c_void);
     fn jit_insn_add(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_mul(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_sub(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_div(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_load(function: *c_void, value: *c_void) -> *c_void;
+    fn jit_value_create(function: *c_void, value_type: *c_void) -> *c_void;
+
     fn jit_value_create_float32_constant(function: *c_void, value_type: *c_void, value: c_float) -> *c_void;
 
     static jit_type_void: *c_void;
@@ -54,10 +60,10 @@ impl Context {
         }
     }
 
-    pub fn create_function(&self, signature: ~Type) -> ~Function {
+    pub fn create_function(&self, signature: &Type) -> ~Function {
         unsafe {
             let function = jit_function_create(self._context, signature._type);
-            return ~Function { _function: function };
+            return ~Function { _context: self, _function: function };
         }
     }
 }
@@ -65,7 +71,6 @@ impl Context {
 impl Drop for Context {
     fn drop(&self) {
         unsafe {
-            println("Destroyed!");
             jit_context_destroy(self._context);
         }
     }
@@ -79,7 +84,7 @@ pub struct Type {
 //pub static void: ~Type = ~Type { _type: jit_type_void };
 
 impl Type {
-    pub fn create_signature(abi: ABI, return_type: ~Type, params: ~[~Type]) -> ~Type {
+    pub fn create_signature(abi: ABI, return_type: &Type, params: &[&Type]) -> ~Type {
         unsafe {
             let mut ps: ~[*c_void] = ~[];
 
@@ -89,7 +94,6 @@ impl Type {
 
             let params = if ps.len() > 0 { vec::raw::to_ptr(ps) } else { 0 as **c_void };
 
-            println(fmt!("%?", params));
             let signature = jit_type_create_signature(abi as c_int, return_type._type, params, ps.len() as c_uint, 1);
             return ~Type { _type: signature };
         }
@@ -97,10 +101,19 @@ impl Type {
 }
 
 pub struct Function {
+    priv _context: *Context,
     priv _function: *c_void
 }
 
+
 impl Function {
+    priv fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> ~Value {
+        unsafe {
+            let value = f(self._function, v1._value, v2._value);
+            return ~Value { _value: value };
+        }
+    }
+
     pub fn compile(&self) {
         unsafe {
             jit_function_compile(self._function);
@@ -114,27 +127,43 @@ impl Function {
         }
     }
 
-    pub fn insn_return(&self, retval: ~Value) {
+    pub fn insn_return(&self, retval: &Value) {
         unsafe {
             jit_insn_return(self._function, retval._value);
         }
     }
 
-    pub fn insn_add(&self, v1: ~Value, v2: ~Value) -> ~Value {
+    pub fn insn_mul(&self, v1: &Value, v2: &Value) -> ~Value {
+        return self.insn_binop(v1, v2, jit_insn_mul);
+    }
+
+    pub fn insn_add(&self, v1: &Value, v2: &Value) -> ~Value {
+        return self.insn_binop(v1, v2, jit_insn_add);
+    }
+
+    pub fn insn_sub(&self, v1: &Value, v2: &Value) -> ~Value {
+        return self.insn_binop(v1, v2, jit_insn_sub);
+    }
+
+    pub fn insn_div(&self, v1: &Value, v2: &Value) -> ~Value {
+        return self.insn_binop(v1, v2, jit_insn_div);
+    }
+
+    pub fn insn_dup(&self, value: &Value) -> ~Value {
         unsafe {
-            let value = jit_insn_add(self._function, v1._value, v2._value);
-            return ~Value { _value: value };
+            let dup_value = jit_insn_load(self._function, value._value);
+            return ~Value { _value: dup_value };
         }
     }
 
-    pub fn apply<T>(&self, args: ~[*c_void], retval: *mut T) {
+    pub fn apply<T>(&self, args: &[*c_void], retval: &mut T) {
         unsafe {
             let pargs = vec::raw::to_ptr(args);
-            jit_function_apply(self._function, pargs as **c_void, retval as *mut c_void);
+            jit_function_apply(self._function, pargs as **c_void, ptr::to_mut_unsafe_ptr(retval) as *mut c_void);
         }
     }
 
-    pub fn execute(&self, args: ~[*c_void]) {
+    pub fn execute(&self, args: &[*c_void]) {
         unsafe {
             let pargs = vec::raw::to_ptr(args);
             jit_function_apply(self._function, pargs as **c_void, ptr::mut_null());
@@ -147,6 +176,13 @@ impl Function {
             return ~Value { _value: value };
         }
     }
+
+    pub fn create_value(&self, value_type: &Type) -> ~Value {
+        unsafe {
+            let value = jit_value_create(self._function, value_type._type);
+            return ~Value { _value: value };
+        }
+    }
 }
 
 
@@ -156,6 +192,13 @@ pub struct Value {
 
 impl Value {
 
+}
+
+
+impl Clone for Value {
+    pub fn clone(&self) -> Value {
+        Value { _value: self._value }
+    }
 }
 
 
