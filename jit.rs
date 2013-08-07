@@ -88,7 +88,7 @@ impl Type {
         unsafe {
             let mut ps: ~[*c_void] = ~[];
 
-            for params.iter().advance |param| {
+            for param in params.iter() {
                 ps.push(param._type);
             }
 
@@ -107,10 +107,10 @@ pub struct Function {
 
 
 impl Function {
-    priv fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> ~Value {
+    priv fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> Value {
         unsafe {
             let value = f(self._function, v1._value, v2._value);
-            return ~Value { _value: value };
+            return Value { _value: value };
         }
     }
 
@@ -120,10 +120,10 @@ impl Function {
         }
     }
 
-    pub fn get_param(&self, param: uint) -> ~Value {
+    pub fn get_param(&self, param: uint) -> Value {
         unsafe {
             let value = jit_value_get_param(self._function, param as c_uint);
-            return ~Value { _value: value };
+            return Value { _value: value };
         }
     }
 
@@ -133,26 +133,26 @@ impl Function {
         }
     }
 
-    pub fn insn_mul(&self, v1: &Value, v2: &Value) -> ~Value {
+    pub fn insn_mul(&self, v1: &Value, v2: &Value) -> Value {
         return self.insn_binop(v1, v2, jit_insn_mul);
     }
 
-    pub fn insn_add(&self, v1: &Value, v2: &Value) -> ~Value {
+    pub fn insn_add(&self, v1: &Value, v2: &Value) -> Value {
         return self.insn_binop(v1, v2, jit_insn_add);
     }
 
-    pub fn insn_sub(&self, v1: &Value, v2: &Value) -> ~Value {
+    pub fn insn_sub(&self, v1: &Value, v2: &Value) -> Value {
         return self.insn_binop(v1, v2, jit_insn_sub);
     }
 
-    pub fn insn_div(&self, v1: &Value, v2: &Value) -> ~Value {
+    pub fn insn_div(&self, v1: &Value, v2: &Value) -> Value {
         return self.insn_binop(v1, v2, jit_insn_div);
     }
 
-    pub fn insn_dup(&self, value: &Value) -> ~Value {
+    pub fn insn_dup(&self, value: &Value) -> Value {
         unsafe {
             let dup_value = jit_insn_load(self._function, value._value);
-            return ~Value { _value: dup_value };
+            return Value { _value: dup_value };
         }
     }
 
@@ -170,17 +170,17 @@ impl Function {
         }
     }
 
-    pub fn constant_float32(&self, constant: f32) -> ~Value {
+    pub fn constant_float32(&self, constant: f32) -> Value {
         unsafe {
             let value = jit_value_create_float32_constant(self._function, jit_type_float32, constant as c_float);
-            return ~Value { _value: value };
+            return Value { _value: value };
         }
     }
 
-    pub fn create_value(&self, value_type: &Type) -> ~Value {
+    pub fn create_value(&self, value_type: &Type) -> Value {
         unsafe {
             let value = jit_value_create(self._function, value_type._type);
-            return ~Value { _value: value };
+            return Value { _value: value };
         }
     }
 }

@@ -81,7 +81,7 @@ fn main() {
         Load(1),
         Load(1),
         Add,
-        Add,
+        Multiply,
         Ret
     ];
 
@@ -110,10 +110,11 @@ fn compile(program: &[Opcode], context: &jit::Context) -> ~jit::Function {
 
     let function = context.create_function(signature);
 
-    let stack = &mut ~[];
+    let mut stack = ~[];
+    let stack = &mut stack;
     let environment = &mut Environment { bp: 0, ip: 0 };
 
-    for program.iter().advance |opcode| {
+    for opcode in program.iter() {
         compile_opcode(opcode, function, stack, environment);
     }
 
@@ -123,7 +124,7 @@ fn compile(program: &[Opcode], context: &jit::Context) -> ~jit::Function {
     return function;
 }
 
-fn compile_opcode(opcode: &Opcode, function: &jit::Function, stack: &mut ~[Option<~jit::Value>], environment: &mut Environment) {
+fn compile_opcode(opcode: &Opcode, function: &jit::Function, stack: &mut ~[Option<jit::Value>], environment: &mut Environment) {
     match *opcode {
         Constf(operand)  => {
             stack.push(Some(function.constant_float32(operand))); 
@@ -131,34 +132,38 @@ fn compile_opcode(opcode: &Opcode, function: &jit::Function, stack: &mut ~[Optio
         Add             => {
             let v1 = stack.pop(); 
             let v2 = stack.pop();
-            stack.push(Some(function.insn_add(v2.get(), v1.get())));
+            stack.push(Some(function.insn_add(v2.get_ref(), v1.get_ref())));
         }
         Subtract        => {
             let v1 = stack.pop(); 
             let v2 = stack.pop(); 
-            stack.push(Some(function.insn_sub(v2.get(), v1.get())));
+            stack.push(Some(function.insn_sub(v2.get_ref(), v1.get_ref())));
         }
         Multiply        => {
             let v1 = stack.pop(); 
             let v2 = stack.pop(); 
-            stack.push(Some(function.insn_mul(v2.get(), v1.get())));
+            stack.push(Some(function.insn_mul(v2.get_ref(), v1.get_ref())));
         }
         Divide          => {
             let v1 = stack.pop(); 
             let v2 = stack.pop(); 
-            stack.push(Some(function.insn_div(v2.get(), v1.get())));
+            stack.push(Some(function.insn_div(v2.get_ref(), v1.get_ref())));
         }
-        Ret             => { function.insn_return(stack.pop().get()) },
+        Ret             => { 
+            let v = stack.pop();
+            function.insn_return(v.get_ref()) 
+        },
         Disp            => {} //println(fmt!("%?", stack.pop()))
         Store(addr) => {
-            stack[environment.bp - addr - 1] = Some(function.insn_dup(stack.pop().get()));
+            let v = stack.pop();
+            stack[environment.bp - addr - 1] = Some(function.insn_dup(v.get_ref()));
         }
         Load(addr) => {
             //stack.push(stack[environment.bp - addr - 1]);
             /*stack.push(None);
             let len = stack.len();
             stack.swap((environment.bp - addr - 1) as uint, len - 1);*/
-            let new_value = Some(function.insn_dup(stack[environment.bp - addr - 1].clone().get()));
+            let new_value = Some(function.insn_dup(stack[environment.bp - addr - 1].get_ref()));
             stack.push(new_value);
         }
         Reserve(n) => {
