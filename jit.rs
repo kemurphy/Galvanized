@@ -3,10 +3,6 @@ use interpret::*;
 use libjit::*;
 use analysis::*;
 
-mod opcode;
-mod interpret;
-mod libjit;
-
 
 pub fn compile(program: &[Opcode], context: &Context) -> ~Function {
     context.build_start();
