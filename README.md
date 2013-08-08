@@ -1,4 +1,4 @@
-# <Insert Name Here>
+# Galvanized
 
 A very simple JIT VM written in Rust and using libjit.
 
