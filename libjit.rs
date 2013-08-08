@@ -4,7 +4,6 @@ use std::ptr;
 use std::io::*;
 use std::cast::*;
 
-
 pub enum ABI {
     CDECL = 0
 }
@@ -30,6 +29,11 @@ extern {
     fn jit_insn_label(function: *c_void, label: **c_void);
     fn jit_insn_branch(function: *c_void, label: **c_void);
     fn jit_insn_le(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_ge(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_lt(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_gt(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_eq(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_ne(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_branch_if(function: *c_void, value: *c_void, label: **c_void);
     fn jit_insn_store(function: *c_void, dest: *c_void, src: *c_void);
     fn jit_dump_function (stream: *FILE, funcion: *c_void, name: *c_char);
@@ -41,7 +45,6 @@ extern {
     static jit_type_float32: *c_void;
     static jit_type_float64: *c_void;
 }
-
 
 pub struct Context {
     priv _context: *c_void
@@ -87,9 +90,6 @@ pub struct Type {
     priv _type: *c_void
 }
 
-// CRASHES compiler
-//pub static void: ~Type = ~Type { _type: jit_type_void };
-
 impl Type {
     pub fn create_signature(abi: ABI, return_type: &Type, params: &[&Type]) -> ~Type {
         unsafe {
@@ -111,7 +111,6 @@ pub struct Function {
     priv _context: *Context,
     priv _function: *c_void
 }
-
 
 impl Function {
     priv fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> ~Value {
@@ -166,6 +165,26 @@ impl Function {
 
     pub fn insn_leq(&self, v1: &Value, v2: &Value) -> ~Value {
         self.insn_binop(v1, v2, jit_insn_le)
+    }
+
+    pub fn insn_geq(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_ge)
+    }
+
+    pub fn insn_lt(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_lt)
+    }
+
+    pub fn insn_gt(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_gt)
+    }
+
+    pub fn insn_eq(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_eq)
+    }
+
+    pub fn insn_neq(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_ne)
     }
 
     pub fn insn_dup(&self, value: &Value) -> ~Value {
@@ -242,7 +261,6 @@ impl Function {
     }
 }
 
-
 pub struct Value {
     priv _value: *c_void
 }
@@ -251,13 +269,11 @@ impl Value {
 
 }
 
-
 impl Clone for Value {
     pub fn clone(&self) -> Value {
         Value { _value: self._value }
     }
 }
-
 
 pub struct Label {
     priv _label: *c_void
@@ -272,7 +288,6 @@ impl Label {
         ~Label { _label: Label::undefined() }
     }
 }
-
 
 priv struct Types;
 impl Types {

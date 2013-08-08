@@ -12,7 +12,7 @@ mod analysis;
 
 fn main() {
 
-    // Computes the factorial of 10.
+    // Sample VM function that omputes the factorial of 10.
     let factorial = ~[
         // n := 10          //
         Constf(10f32),      // 
@@ -22,7 +22,7 @@ fn main() {
         Constf(1f32),       //
         Store(1),           // 
                             //
-        // if f <= 1 go end //
+        // if n <= 1 go end //
         Load(0),            // <---------
         Constf(1f32),       //          |
         Ifleq(16),          // ------   |
@@ -33,7 +33,7 @@ fn main() {
         Multiply,           //      |   |
         Store(1),           //      |   |
                             //      |   |
-        // n := f - 1       //      |   |
+        // n := n - 1       //      |   |
         Load(0),            //      |   |
         Constf(1f32),       //      |   |
         Subtract,           //      |   |
