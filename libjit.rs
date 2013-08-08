@@ -1,12 +1,12 @@
 use std::libc::*;
 use std::vec;
 use std::ptr;
+use std::io::*;
 
 
 pub enum ABI {
     CDECL = 0
 }
-
 
 #[link_args = "-ljit"]
 extern {
@@ -26,6 +26,12 @@ extern {
     fn jit_insn_div(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_load(function: *c_void, value: *c_void) -> *c_void;
     fn jit_value_create(function: *c_void, value_type: *c_void) -> *c_void;
+    fn jit_insn_label(function: *c_void, label: **c_void);
+    fn jit_insn_branch(function: *c_void, label: **c_void);
+    fn jit_insn_le(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_branch_if(function: *c_void, value: *c_void, label: **c_void);
+    fn jit_insn_store(function: *c_void, dest: *c_void, src: *c_void);
+    fn jit_dump_function (stream: *FILE, funcion: *c_void, name: *c_char);
 
     fn jit_value_create_float32_constant(function: *c_void, value_type: *c_void, value: c_float) -> *c_void;
 
@@ -114,6 +120,14 @@ impl Function {
         }
     }
 
+    pub fn dump(&self, name: &str) {
+        unsafe {
+            name.as_c_str(|c_str| {
+                jit_dump_function(rustrt::rust_get_stdout(), self._function, c_str);
+            });
+        }
+    }
+
     pub fn compile(&self) {
         unsafe {
             jit_function_compile(self._function);
@@ -149,10 +163,46 @@ impl Function {
         return self.insn_binop(v1, v2, jit_insn_div);
     }
 
+    pub fn insn_leq(&self, v1: &Value, v2: &Value) -> ~Value {
+        return self.insn_binop(v1, v2, jit_insn_le);
+    }
+
     pub fn insn_dup(&self, value: &Value) -> ~Value {
         unsafe {
             let dup_value = jit_insn_load(self._function, value._value);
             return ~Value { _value: dup_value };
+        }
+    }
+
+    pub fn insn_store(&self, dest: &Value, src: &Value) {
+        unsafe {
+            jit_insn_store(self._function, dest._value, src._value);
+        }
+    }
+
+    pub fn insn_label(&self) -> ~Label {
+        unsafe {
+            let label = ~Label { _label: 0 as *c_void };
+            jit_insn_label(self._function, &label._label as **c_void);
+            return label;
+        }
+    }
+
+    pub fn insn_set_label(&self, label: &Label) {
+        unsafe {
+            jit_insn_label(self._function, &label._label as **c_void);
+        }
+    }
+
+    pub fn insn_branch(&self, label: &Label) {
+        unsafe {
+            jit_insn_branch(self._function, &label._label as **c_void);
+        }
+    }
+
+    pub fn insn_branch_if(&self, value: &Value, label: &Label) {
+        unsafe {
+            jit_insn_branch_if(self._function, value._value, &label._label as **c_void);
         }
     }
 
@@ -198,6 +248,21 @@ impl Value {
 impl Clone for Value {
     pub fn clone(&self) -> Value {
         Value { _value: self._value }
+    }
+}
+
+
+pub struct Label {
+    priv _label: *c_void
+}
+
+impl Label {
+    fn undefined() -> *c_void {
+        !0u32 as *c_void
+    }
+
+    pub fn new() -> ~Label {
+        ~Label { _label: Label::undefined() }
     }
 }
 

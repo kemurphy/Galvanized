@@ -12,7 +12,7 @@ mod analysis;
 
 fn main() {
 
-    /*// Computes the factorial of 10.
+    // Computes the factorial of 10.
     let factorial = ~[
         // n := 10          //
         Constf(10f32),      // 
@@ -25,7 +25,7 @@ fn main() {
         // if f <= 1 go end //
         Load(0),            // <---------
         Constf(1f32),       //          |
-        Ifleq(10),          // ------   |
+        Ifleq(16),          // ------   |
                             //      |   |
         // f := n * f       //      |   |
         Load(0),            //      |   |
@@ -40,31 +40,11 @@ fn main() {
         Store(0),           //      |   |
                             //      |   |
         // loop             //      |   |
-        Jmp(-11),           // -----+----
+        Jmp(4),           // -----+----
                             //      |
         // return f         //      |
         Load(1),            // <-----
         Ret                 //
-    ];*/
-
-    // Computes the factorial of 10.
-    let factorial = ~[
-        Constf(100f32),
-        Constf(102.22),
-        Multiply,
-        Store(0),
-        Constf(100f32),
-        Constf(102.22),
-        Add,
-        Store(1),
-        Load(0),
-        Load(1),
-        Subtract,
-        Load(1),
-        Load(1),
-        Add,
-        Multiply,
-        Ret
     ];
 
     println("Interpreting factorial...");
@@ -76,8 +56,13 @@ fn main() {
     let context = Context::new();
     let function = compile(factorial, context);
 
+    function.dump("factorial");
+    println("");
+
     let args: ~[*c_void] = ~[];
     let retval: @mut f32 = @mut 15.0;
     function.apply(args, retval);
+
+    println("Returned:");
     println(fmt!("%?", *retval));
 }

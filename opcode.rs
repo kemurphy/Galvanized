@@ -1,5 +1,6 @@
 
 pub enum Opcode {
+    Nop,
     Add,
     Subtract,
     Multiply,
@@ -9,6 +10,6 @@ pub enum Opcode {
     Disp,
     Store(u32),
     Load(u32),
-    Jmp(i32),
-    Ifleq(i32)
+    Jmp(u32),
+    Ifleq(u32)
 }

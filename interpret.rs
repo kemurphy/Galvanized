@@ -4,25 +4,26 @@ use analysis::*;
 
 pub struct Environment {
     bp: u32,
-    ip: i32
+    ip: u32,
+    end: u32
 }
 
 
 
 pub fn interpret(program: &[Opcode]) {
     let stack = &mut ~[];
-    let environment = &mut Environment { bp: 0, ip: 0 };
+    let environment = &mut Environment { bp: 0, ip: 0, end: program.len() as u32 };
 
     let local_count = local_count(program);
     environment.bp += local_count;
     stack.grow(local_count as uint, &0f32);
 
     while (environment.ip as uint) < program.len() {
-        environment.ip += interpret_opcode(&program[environment.ip], stack, environment);
+        environment.ip = interpret_opcode(&program[environment.ip], stack, environment);
     }
 }
 
-fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Environment) -> i32 {
+fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Environment) -> u32 {
     match *opcode {
         Constf(operand)  => {
             stack.push(operand);
@@ -47,7 +48,10 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
             let v2 = stack.pop(); 
             stack.push(v2 / v1);
         }
-        Ret             => println(fmt!("%?", stack.pop())),
+        Ret             => {
+            println(fmt!("Returned: %?", stack.pop()));
+            return environment.end;
+        }
         Disp            => println(fmt!("%?", stack.pop())),
         Store(addr) => {
             stack[environment.bp - addr - 1] = stack.pop();
@@ -65,6 +69,7 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
                 return n;
             }
         }
+        Nop => { }
     }
-    return 1;
+    return environment.ip + 1;
 }
