@@ -1,6 +1,6 @@
 # Galvanized
 
-A very simple JIT VM written in Rust and using libjit.
+A simple JIT VM written using Rust and libjit
 
 # Requires:
 
