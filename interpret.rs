@@ -1,5 +1,5 @@
 use opcode::*;
-
+use analysis::*;
 
 
 pub struct Environment {
@@ -12,6 +12,11 @@ pub struct Environment {
 pub fn interpret(program: &[Opcode]) {
     let stack = &mut ~[];
     let environment = &mut Environment { bp: 0, ip: 0 };
+
+    let local_count = local_count(program);
+    environment.bp += local_count;
+    stack.grow(local_count as uint, &0f32);
+
     while (environment.ip as uint) < program.len() {
         environment.ip += interpret_opcode(&program[environment.ip], stack, environment);
     }
@@ -49,10 +54,6 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
         }
         Load(addr) => {
             stack.push(stack[environment.bp - addr - 1]);
-        }
-        Reserve(n) => {
-            environment.bp += n;
-            stack.grow(n as uint, &0f32);
         }
         Jmp(n) => {
             return n;

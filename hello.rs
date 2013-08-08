@@ -8,6 +8,7 @@ mod libjit;
 mod opcode;
 mod interpret;
 mod jit;
+mod analysis;
 
 fn main() {
 
@@ -48,7 +49,6 @@ fn main() {
 
     // Computes the factorial of 10.
     let factorial = ~[
-        Reserve(2),
         Constf(100f32),
         Constf(102.22),
         Multiply,

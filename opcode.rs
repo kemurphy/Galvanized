@@ -9,7 +9,6 @@ pub enum Opcode {
     Disp,
     Store(u32),
     Load(u32),
-    Reserve(u32),
     Jmp(i32),
     Ifleq(i32)
 }

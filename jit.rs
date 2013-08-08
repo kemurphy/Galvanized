@@ -1,6 +1,7 @@
 use opcode::*;
 use interpret::*;
 use libjit::*;
+use analysis::*;
 
 mod opcode;
 mod interpret;
@@ -20,6 +21,10 @@ pub fn compile(program: &[Opcode], context: &Context) -> ~Function {
     let mut stack = ~[];
     let stack = &mut stack;
     let environment = &mut Environment { bp: 0, ip: 0 };
+
+    let local_count = local_count(program);
+    environment.bp += local_count;
+    stack.grow(local_count as uint, ~None);
 
     for opcode in program.iter() {
         compile_opcode(opcode, function, stack, environment);
@@ -84,10 +89,6 @@ fn compile_opcode(opcode: &Opcode, function: &Function, stack: &mut ~[Option<~Va
             let temp = v.get_ref();
             let new_value = Some(function.insn_dup(*temp));
             stack.push(new_value);
-        }
-        Reserve(n) => {
-            environment.bp += n;
-            stack.grow(n as uint, ~None);
         }
         Jmp(n) => {
 
