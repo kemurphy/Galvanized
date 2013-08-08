@@ -69,10 +69,8 @@ fn main() {
     println("");
     println("Closure factorial(10)...");
 
-    let f: extern "C" unsafe fn() -> c_float = function.closure();
-    let ret = unsafe {
-        f()
-    };
-    
+    let f: extern "C" fn() -> c_float = function.closure();
+    let ret = f();
+
     println(fmt!("%?", ret));
 }

@@ -2,6 +2,7 @@ use std::libc::*;
 use std::vec;
 use std::ptr;
 use std::io::*;
+use std::cast::*;
 
 
 pub enum ABI {
@@ -33,7 +34,7 @@ extern {
     fn jit_insn_store(function: *c_void, dest: *c_void, src: *c_void);
     fn jit_dump_function (stream: *FILE, funcion: *c_void, name: *c_char);
     fn jit_value_create_float32_constant(function: *c_void, value_type: *c_void, value: c_float) -> *c_void;
-    fn jit_function_to_closure(function: *c_void) -> extern "C" unsafe fn() -> c_float;
+    fn jit_function_to_closure(function: *c_void) -> *c_void;
 
     static jit_type_void: *c_void;
     static jit_type_int: *c_void;
@@ -220,9 +221,9 @@ impl Function {
         }
     }
 
-    pub fn closure(&self) -> extern "C" unsafe fn() -> c_float {
+    pub fn closure<T>(&self) -> T {
         unsafe {
-            jit_function_to_closure(self._function)
+            transmute(jit_function_to_closure(self._function))
         }
     }
 
