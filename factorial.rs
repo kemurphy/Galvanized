@@ -40,18 +40,18 @@ fn main() {
         Store(0),           //      |   |
                             //      |   |
         // loop             //      |   |
-        Jmp(4),           // -----+----
+        Jmp(4),             // -----+----
                             //      |
         // return f         //      |
         Load(1),            // <-----
         Ret                 //
     ];
 
-    println("Interpreting factorial...");
+    println("Interpreting factorial(10)...");
     interpret(factorial);
 
     println("");
-    println("Jitting factorial...");
+    println("Jitting factorial(10)...");
     
     let context = Context::new();
     let function = compile(factorial, context);
@@ -65,4 +65,14 @@ fn main() {
 
     println("Returned:");
     println(fmt!("%?", *retval));
+
+    println("");
+    println("Closure factorial(10)...");
+
+    let f: extern "C" unsafe fn() -> c_float = function.closure();
+    let ret = unsafe {
+        f()
+    };
+    
+    println(fmt!("%?", ret));
 }
