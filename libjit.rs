@@ -113,7 +113,7 @@ pub struct Function {
 }
 
 impl Function {
-    priv fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> ~Value {
+    fn insn_binop(&self, v1: &Value, v2: &Value, f: extern "C" unsafe fn(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void) -> ~Value {
         unsafe {
             let value = f(self._function, v1._value, v2._value);
             ~Value { _value: value }
@@ -289,7 +289,7 @@ impl Label {
     }
 }
 
-priv struct Types;
+struct Types;
 impl Types {
     pub fn get_void() -> ~Type {
         ~Type { _type: jit_type_void }
