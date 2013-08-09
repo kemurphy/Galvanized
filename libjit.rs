@@ -261,18 +261,9 @@ impl Function {
     }
 }
 
+#[deriving(Clone)]
 pub struct Value {
     priv _value: *c_void
-}
-
-impl Value {
-
-}
-
-impl Clone for Value {
-    pub fn clone(&self) -> Value {
-        Value { _value: self._value }
-    }
 }
 
 pub struct Label {
