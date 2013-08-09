@@ -79,8 +79,11 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
 
     let opcode = annotated_function[index].opcode;
     match opcode {
-        Constf(operand) => {
+        Constf32(operand) => {
             stack.push(function.constant_float32(operand)); 
+        }
+        Consti32(operand) => {
+            stack.push(function.constant_int32(operand));
         }
         Add => { 
             do binary_opcode(stack) |v1, v2| { function.insn_add(v1, v2) };
@@ -94,6 +97,39 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
         Divide => { 
             do binary_opcode(stack) |v1, v2| { function.insn_div(v1, v2) };
         }
+        And => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_and(v1, v2) };
+        }
+        Or => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_or(v1, v2) };
+        }
+        Xor => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_xor(v1, v2) };
+        }
+        Eq => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_eq(v1, v2) };
+        }
+        Neq => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_neq(v1, v2) };
+        }
+        Leq => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_leq(v1, v2) };
+        }
+        Geq => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_geq(v1, v2) };
+        }
+        Lt => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_lt(v1, v2) };
+        }
+        Gt => { 
+            do binary_opcode(stack) |v1, v2| { function.insn_gt(v1, v2) };
+        }
+        Negate => { 
+            do unary_opcode(stack) |value| { function.insn_neg(value) };
+        }
+        Not => { 
+            do unary_opcode(stack) |value| { function.insn_not(value) };
+        }
         Ret => { 
             let v = stack.pop();
             function.insn_return(v);
@@ -103,7 +139,12 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
             let v = stack.pop();
             function.insn_store(locals[addr], v);
         }
-        Load(addr) => {
+        Loadf32(addr) => {
+            let v = locals[addr].clone();
+            let new_value = function.insn_dup(v);
+            stack.push(new_value);
+        }
+        Loadi32(addr) => {
             let v = locals[addr].clone();
             let new_value = function.insn_dup(v);
             stack.push(new_value);
@@ -111,23 +152,11 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
         Jmp(n) => {
             function.insn_branch(annotated_function[n].label);
         }
-        Ifleq(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_leq(v1, v2) };
+        Iftrue(n) => {
+            do conditional_branch(annotated_function, stack, n) |value, label| { function.insn_branch_if(value, label) };
         }
-        Ifgeq(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_geq(v1, v2) };
-        }
-        Iflt(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_lt(v1, v2) };
-        }
-        Ifgt(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_gt(v1, v2) };
-        }
-        Ifeq(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_eq(v1, v2) };
-        }
-        Ifneq(n) => {
-            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_neq(v1, v2) };
+        Iffalse(n) => {
+            do conditional_branch(annotated_function, stack, n) |value, label| { function.insn_branch_if_not(value, label) };
         }
         Nop => { }
     }
@@ -144,7 +173,7 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
 fn reserve_locals(function: &[Opcode], jit_function: &Function) -> ~[~Value] {
     let local_count = local_count(function) as uint;
     let locals: ~[~Value] = do vec::from_fn(local_count) |_| {
-        jit_function.create_value(Types::get_float32())
+        jit_function.create_value(Types::get_int())
     };
     return locals;
 }
@@ -170,7 +199,7 @@ fn annotate_labels(function: &[Opcode]) -> ~[~AnnotatedOpcode] {
                 annotated_function[index].jmp_to = Some(n);
                 annotated_function[n].jmp_from = Some(index);
             }
-            Ifleq(n) => {
+            Iftrue(n) | Iffalse(n) => {
                 annotated_function[index].jmp_to = Some(n);
                 annotated_function[n].jmp_from = Some(index);
             }
@@ -198,6 +227,21 @@ fn binary_opcode(stack: &mut ~[~Value], f: &fn(v1: &Value, v2: &Value) -> ~Value
 }
 
 /**
+ * Helper function for a binary opcode.
+ *
+ * Pops 2 Values from the stack and pushes the resulting Value.
+ *
+ * # Arguments
+ *
+ * * stack - The VM stack.
+ * * f     - A function that takes 2 Values from the stack and returns a result Value.
+ */
+fn unary_opcode(stack: &mut ~[~Value], f: &fn(value: &Value) -> ~Value) {
+    let value = stack.pop();
+    stack.push(f(value));
+}
+
+/**
  * Helper function for a conditional branch opcode.
  *
  * Pops 2 Values from the stack and branches if they meet the specified condition.
@@ -213,11 +257,8 @@ fn binary_opcode(stack: &mut ~[~Value], f: &fn(v1: &Value, v2: &Value) -> ~Value
 fn conditional_branch(annotated_function: &mut ~[~AnnotatedOpcode], 
                       stack: &mut ~[~Value],
                       target_address: u32,
-                      function: &Function,
-                      f: &fn(v1: &Value, v2: &Value) -> ~Value) {
+                      f: &fn(value: &Value, label: &mut Label)) {
 
-    let v1 = stack.pop();
-    let v2 = stack.pop();
-    let temp_result = f(v2, v1);
-    function.insn_branch_if(temp_result, annotated_function[target_address].label);
+    let value = stack.pop();
+    f(value, annotated_function[target_address].label);
 }

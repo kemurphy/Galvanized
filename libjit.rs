@@ -24,6 +24,11 @@ extern {
     fn jit_insn_mul(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_sub(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_div(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_and(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_or(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_xor(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
+    fn jit_insn_not(function: *c_void, value: *c_void) -> *c_void;
+    fn jit_insn_neg(function: *c_void, value: *c_void) -> *c_void;
     fn jit_insn_load(function: *c_void, value: *c_void) -> *c_void;
     fn jit_value_create(function: *c_void, value_type: *c_void) -> *c_void;
     fn jit_insn_label(function: *c_void, label: *mut c_void);
@@ -35,9 +40,11 @@ extern {
     fn jit_insn_eq(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_ne(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_branch_if(function: *c_void, value: *c_void, label: *mut c_void);
+    fn jit_insn_branch_if_not(function: *c_void, value: *c_void, label: *mut c_void);
     fn jit_insn_store(function: *c_void, dest: *c_void, src: *c_void);
     fn jit_dump_function (stream: *FILE, funcion: *c_void, name: *c_char);
     fn jit_value_create_float32_constant(function: *c_void, value_type: *c_void, value: c_float) -> *c_void;
+    fn jit_value_create_nint_constant(function: *c_void, value_type: *c_void, value: c_int) -> *c_void;
     fn jit_function_to_closure(function: *c_void) -> *c_void;
 
     static jit_type_void: *c_void;
@@ -120,6 +127,13 @@ impl Function {
         }
     }
 
+    fn insn_unop(&self, value: &Value, f: extern "C" unsafe fn(function: *c_void, value: *c_void) -> *c_void) -> ~Value {
+        unsafe {
+            let value = f(self._function, value._value);
+            ~Value { _value: value }
+        }
+    }
+
     pub fn dump(&self, name: &str) {
         unsafe {
             name.as_c_str(|c_str| {
@@ -187,6 +201,26 @@ impl Function {
         self.insn_binop(v1, v2, jit_insn_ne)
     }
 
+    pub fn insn_and(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_and)
+    }
+
+    pub fn insn_or(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_or)
+    }
+
+    pub fn insn_xor(&self, v1: &Value, v2: &Value) -> ~Value {
+        self.insn_binop(v1, v2, jit_insn_xor)
+    }
+
+    pub fn insn_not(&self, value: &Value) -> ~Value {
+        self.insn_unop(value, jit_insn_not)
+    }
+
+    pub fn insn_neg(&self, value: &Value) -> ~Value {
+        self.insn_unop(value, jit_insn_neg)
+    }
+
     pub fn insn_dup(&self, value: &Value) -> ~Value {
         unsafe {
             let dup_value = jit_insn_load(self._function, value._value);
@@ -230,6 +264,13 @@ impl Function {
         }
     }
 
+    pub fn insn_branch_if_not(&self, value: &Value, label: &mut Label) {
+        unsafe {
+            let ptr_label = ptr::to_mut_unsafe_ptr(&mut label._label);
+            jit_insn_branch_if_not(self._function, value._value, ptr_label as *mut c_void);
+        }
+    }
+
     pub fn apply<T>(&self, args: &[*c_void], retval: &mut T) {
         unsafe {
             let pargs = vec::raw::to_ptr(args);
@@ -253,6 +294,13 @@ impl Function {
     pub fn constant_float32(&self, constant: f32) -> ~Value {
         unsafe {
             let value = jit_value_create_float32_constant(self._function, jit_type_float32, constant as c_float);
+            ~Value { _value: value }
+        }
+    }
+
+    pub fn constant_int32(&self, constant: i32) -> ~Value {
+        unsafe {
+            let value = jit_value_create_nint_constant(self._function, jit_type_int, constant as c_int);
             ~Value { _value: value }
         }
     }

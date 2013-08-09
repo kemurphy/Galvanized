@@ -15,27 +15,28 @@ fn main() {
     // Sample VM function that omputes the factorial of 10.
     let factorial = ~[
         // n := 10          //
-        Constf(10f32),      // 
+        Consti32(10i32),    // 
         Store(0),           // 
                             //
         // f := 1           //
-        Constf(1f32),       //
+        Consti32(1i32),     //
         Store(1),           // 
                             //
         // if n <= 1 go end //
-        Load(0),            // <---------
-        Constf(1f32),       //          |
-        Ifleq(16),          // ------   |
+        Loadi32(0),            // <---------
+        Consti32(1i32),     //          |
+        Leq,                //          |
+        Iftrue(17),         // ------   |
                             //      |   |
         // f := n * f       //      |   |
-        Load(0),            //      |   |
-        Load(1),            //      |   |
+        Loadi32(0),            //      |   |
+        Loadi32(1),            //      |   |
         Multiply,           //      |   |
         Store(1),           //      |   |
                             //      |   |
         // n := n - 1       //      |   |
-        Load(0),            //      |   |
-        Constf(1f32),       //      |   |
+        Loadi32(0),            //      |   |
+        Consti32(1i32),     //      |   |
         Subtract,           //      |   |
         Store(0),           //      |   |
                             //      |   |
@@ -43,7 +44,7 @@ fn main() {
         Jmp(4),             // -----+----
                             //      |
         // return f         //      |
-        Load(1),            // <-----
+        Loadi32(1),            // <-----
         Ret                 //
     ];
 

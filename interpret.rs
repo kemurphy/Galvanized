@@ -47,8 +47,11 @@ pub fn interpret(function: &[Opcode]) {
  */
 fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Environment) -> u32 {
     match *opcode {
-        Constf(operand) => {
+        Constf32(operand) => {
             stack.push(operand);
+        }
+        Consti32(operand) => {
+            stack.push(operand as f32);
         }
         Add => {
             do binary_opcode(stack) |v1, v2| { v1 + v2 };
@@ -62,6 +65,39 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
         Divide => {
             do binary_opcode(stack) |v1, v2| { v1 / v2 };
         }
+        And => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) & (v2 as uint)) as f32 };
+        }
+        Or => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) | (v2 as uint)) as f32 };
+        }
+        Xor => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) ^ (v2 as uint)) as f32 };
+        }
+        Eq => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) == (v2 as uint)) as f32 };
+        }
+        Neq => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) != (v2 as uint)) as f32 };
+        }
+        Leq => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) <= (v2 as uint)) as f32 };
+        }
+        Geq => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) >= (v2 as uint)) as f32 };
+        }
+        Lt => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) < (v2 as uint)) as f32 };
+        }
+        Gt => {
+            do binary_opcode(stack) |v1, v2| { ((v1 as uint) > (v2 as uint)) as f32 };
+        }
+        Negate => {
+            do unary_opcode(stack) |value| { -(value as uint) as f32 };
+        }
+        Not => {
+            do unary_opcode(stack) |value| { !(value as uint) as f32 };
+        }
         Ret => {
             println(fmt!("Returned: %?", stack.pop()));
             return environment.end_ip;
@@ -70,29 +106,20 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
         Store(addr) => {
             stack[environment.bp - addr - 1] = stack.pop();
         }
-        Load(addr) => {
+        Loadf32(addr) => {
+            stack.push(stack[environment.bp - addr - 1]);
+        }
+        Loadi32(addr) => {
             stack.push(stack[environment.bp - addr - 1]);
         }
         Jmp(n) => {
             return n;
         }
-        Ifleq(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 <= v2 };
+        Iftrue(n) => {
+            return do conditional_branch(stack, n, environment) |value| { (value as bool) };
         }
-        Ifgeq(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 >= v2 };
-        }
-        Iflt(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 < v2 };
-        }
-        Ifgt(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 > v2 };
-        }
-        Ifeq(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 == v2 };
-        }
-        Ifneq(n) => {
-            return do conditional_branch(stack, n, environment) |v1, v2| { v1 != v2 };
+        Iffalse(n) => {
+            return do conditional_branch(stack, n, environment) |value| { !(value as bool) };
         }
         Nop => { }
     }
@@ -115,12 +142,11 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
 fn conditional_branch(stack: &mut ~[f32], 
                       target_address: u32, 
                       environment: &mut Environment,
-                      f: &fn(v1: f32, v2: f32) -> bool)
+                      f: &fn(value: f32) -> bool)
                       -> u32 {
 
-    let v1 = stack.pop();
-    let v2 = stack.pop();
-    if f(v2, v1) {
+    let value = stack.pop();
+    if f(value) {
         target_address
     } else {
         environment.ip + 1
@@ -141,4 +167,19 @@ fn binary_opcode(stack: &mut ~[f32],
     let v1 = stack.pop();
     let v2 = stack.pop();
     stack.push(f(v2, v1));
+}
+
+/**
+ * Helper function for a unary opcode that pops a value from the stack and pushes the result.
+ *
+ * # Arguments
+ *
+ * * stack          - The VM runtime stack.
+ * * f              - A function that takes a value from the stack and returns a result value.
+ */
+fn unary_opcode(stack: &mut ~[f32],
+                 f: &fn(value: f32) -> f32) {
+
+    let value = stack.pop();
+    stack.push(f(value));
 }

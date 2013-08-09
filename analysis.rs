@@ -12,7 +12,7 @@ pub fn local_count(function: &[Opcode]) -> u32 {
     let mut count = 0u32;
     for opcode in function.iter() {
         match *opcode {
-            Load(n) => count = max(count, n),
+            Loadi32(n) | Loadf32(n) => count = max(count, n),
             Store(n) => count = max(count, n),
             _ => ()
         }
