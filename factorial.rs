@@ -60,7 +60,7 @@ fn main() {
     println("");
 
     let args: ~[*c_void] = ~[];
-    let retval: @mut f32 = @mut 15.0;
+    let mut retval: ~f32 = ~15.0;
     function.apply(args, retval);
 
     println("Returned:");

@@ -51,24 +51,16 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
             stack.push(operand);
         }
         Add => {
-            let v1 = stack.pop(); 
-            let v2 = stack.pop(); 
-            stack.push(v2 + v1);
+            do binary_opcode(stack) |v1, v2| { v1 + v2 };
         }
         Subtract => {
-            let v1 = stack.pop(); 
-            let v2 = stack.pop(); 
-            stack.push(v2 - v1);
+            do binary_opcode(stack) |v1, v2| { v1 - v2 };
         }
         Multiply => {
-            let v1 = stack.pop(); 
-            let v2 = stack.pop(); 
-            stack.push(v2 * v1);
+            do binary_opcode(stack) |v1, v2| { v1 * v2 };
         }
         Divide => {
-            let v1 = stack.pop(); 
-            let v2 = stack.pop(); 
-            stack.push(v2 / v1);
+            do binary_opcode(stack) |v1, v2| { v1 / v2 };
         }
         Ret => {
             println(fmt!("Returned: %?", stack.pop()));
@@ -85,22 +77,22 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
             return n;
         }
         Ifleq(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 <= v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 <= v2 };
         }
         Ifgeq(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 >= v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 >= v2 };
         }
         Iflt(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 < v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 < v2 };
         }
         Ifgt(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 > v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 > v2 };
         }
         Ifeq(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 == v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 == v2 };
         }
         Ifneq(n) => {
-            return conditional_branch(stack, n, environment, |v1, v2| { v2 != v1 } );
+            return do conditional_branch(stack, n, environment) |v1, v2| { v1 != v2 };
         }
         Nop => { }
     }
@@ -123,12 +115,30 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
 fn conditional_branch(stack: &mut ~[f32], 
                       target_address: u32, 
                       environment: &mut Environment,
-                      f: &fn(v1: f32, v2: f32) -> bool) -> u32 {
+                      f: &fn(v1: f32, v2: f32) -> bool)
+                      -> u32 {
+
     let v1 = stack.pop();
     let v2 = stack.pop();
-    return if f(v2, v1) {
+    if f(v2, v1) {
         target_address
     } else {
         environment.ip + 1
     }
+}
+
+/**
+ * Helper function for a binary opcode that pops two values from the stack and pushes the result.
+ *
+ * # Arguments
+ *
+ * * stack          - The VM runtime stack.
+ * * f              - A function that takes two values from the stack and returns a result value.
+ */
+fn binary_opcode(stack: &mut ~[f32],
+                 f: &fn(v1: f32, v2: f32) -> f32) {
+
+    let v1 = stack.pop();
+    let v2 = stack.pop();
+    stack.push(f(v2, v1));
 }

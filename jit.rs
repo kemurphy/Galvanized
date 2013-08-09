@@ -83,16 +83,16 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
             stack.push(function.constant_float32(operand)); 
         }
         Add => { 
-            binary_opcode(stack, |v1, v2| { function.insn_add(v1, v2) } );
+            do binary_opcode(stack) |v1, v2| { function.insn_add(v1, v2) };
         }
         Subtract => { 
-            binary_opcode(stack, |v1, v2| { function.insn_sub(v1, v2) } );
+            do binary_opcode(stack) |v1, v2| { function.insn_sub(v1, v2) };
         }
         Multiply => { 
-            binary_opcode(stack, |v1, v2| { function.insn_mul(v1, v2) } );
+            do binary_opcode(stack) |v1, v2| { function.insn_mul(v1, v2) };
         }
         Divide => { 
-            binary_opcode(stack, |v1, v2| { function.insn_div(v1, v2) } );
+            do binary_opcode(stack) |v1, v2| { function.insn_div(v1, v2) };
         }
         Ret => { 
             let v = stack.pop();
@@ -112,22 +112,22 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
             function.insn_branch(annotated_function[n].label);
         }
         Ifleq(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_leq(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_leq(v1, v2) };
         }
         Ifgeq(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_geq(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_geq(v1, v2) };
         }
         Iflt(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_lt(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_lt(v1, v2) };
         }
         Ifgt(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_gt(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_gt(v1, v2) };
         }
         Ifeq(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_eq(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_eq(v1, v2) };
         }
         Ifneq(n) => {
-            conditional_branch(annotated_function, stack, n, function, |v1, v2| { function.insn_neq(v1, v2) });
+            do conditional_branch(annotated_function, stack, n, function) |v1, v2| { function.insn_neq(v1, v2) };
         }
         Nop => { }
     }
@@ -143,9 +143,9 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
  */
 fn reserve_locals(function: &[Opcode], jit_function: &Function) -> ~[~Value] {
     let local_count = local_count(function) as uint;
-    let locals: ~[~Value] = vec::from_fn(local_count, |_| {
+    let locals: ~[~Value] = do vec::from_fn(local_count) |_| {
         jit_function.create_value(Types::get_float32())
-    });
+    };
     return locals;
 }
 
