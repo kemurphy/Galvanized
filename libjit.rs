@@ -26,15 +26,15 @@ extern {
     fn jit_insn_div(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_load(function: *c_void, value: *c_void) -> *c_void;
     fn jit_value_create(function: *c_void, value_type: *c_void) -> *c_void;
-    fn jit_insn_label(function: *c_void, label: **c_void);
-    fn jit_insn_branch(function: *c_void, label: **c_void);
+    fn jit_insn_label(function: *c_void, label: *mut c_void);
+    fn jit_insn_branch(function: *c_void, label: *mut c_void);
     fn jit_insn_le(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_ge(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_lt(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_gt(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_eq(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
     fn jit_insn_ne(function: *c_void, v1: *c_void, v2: *c_void) -> *c_void;
-    fn jit_insn_branch_if(function: *c_void, value: *c_void, label: **c_void);
+    fn jit_insn_branch_if(function: *c_void, value: *c_void, label: *mut c_void);
     fn jit_insn_store(function: *c_void, dest: *c_void, src: *c_void);
     fn jit_dump_function (stream: *FILE, funcion: *c_void, name: *c_char);
     fn jit_value_create_float32_constant(function: *c_void, value_type: *c_void, value: c_float) -> *c_void;
@@ -202,27 +202,31 @@ impl Function {
 
     pub fn insn_label(&self) -> ~Label {
         unsafe {
-            let label = ~Label { _label: 0 as *c_void };
-            jit_insn_label(self._function, &label._label as **c_void);
+            let mut label = ~Label { _label: 0 as *c_void };
+            let label_ptr = ptr::to_mut_unsafe_ptr(&mut label._label);
+            jit_insn_label(self._function, label_ptr as *mut c_void);
             label
         }
     }
 
-    pub fn insn_set_label(&self, label: &Label) {
+    pub fn insn_set_label(&self, label: &mut Label) {
         unsafe {
-            jit_insn_label(self._function, &label._label as **c_void);
+            let label_ptr = ptr::to_mut_unsafe_ptr(&mut label._label);
+            jit_insn_label(self._function, label_ptr as *mut c_void);
         }
     }
 
-    pub fn insn_branch(&self, label: &Label) {
+    pub fn insn_branch(&self, label: &mut Label) {
         unsafe {
-            jit_insn_branch(self._function, &label._label as **c_void);
+            let label_ptr = ptr::to_mut_unsafe_ptr(&mut label._label);
+            jit_insn_branch(self._function, label_ptr as *mut c_void);
         }
     }
 
-    pub fn insn_branch_if(&self, value: &Value, label: &Label) {
+    pub fn insn_branch_if(&self, value: &Value, label: &mut Label) {
         unsafe {
-            jit_insn_branch_if(self._function, value._value, &label._label as **c_void);
+            let ptr_label = ptr::to_mut_unsafe_ptr(&mut label._label);
+            jit_insn_branch_if(self._function, value._value, ptr_label as *mut c_void);
         }
     }
 
