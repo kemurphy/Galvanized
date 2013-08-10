@@ -1,13 +1,17 @@
-=======
 Galvanized
 ==========
 
-A simple JIT VM written using Rust and libjit
+## Overview
 
-# Requires:
+A simple JIT VM written using Rust and LibJIT.
 
-* libjit -- git clone git://git.savannah.gnu.org/libjit.git
+## Requires:
 
-# Run
+LibJIT -- http://www.gnu.org/software/libjit/
+> git clone git://git.savannah.gnu.org/libjit.git
 
-rust run factorial.rs
+## Run
+
+factorial.rs implements a VM function that computes factorial(10). To run:
+
+> rust run factorial.rs
