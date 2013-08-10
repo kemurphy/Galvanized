@@ -5,12 +5,28 @@ use libjit::*;
 use std::to_bytes::*;
 use std::hash::*;
 
+/**
+ * Represents a basic block.
+ * http://en.wikipedia.org/wiki/Basic_block
+ */
 #[Deriving(Hash)]
 struct BasicBlock {
+    /// Basic blocks that control can flow to this one from.
     prev_blocks: ~[@mut BasicBlock],
+
+    /// The next basic block in the control flow. This is either
+    /// because it starts with the next instruction, is the target
+    /// or an unconditional branch, or is the fall-through for
+    /// a conditional branch.
     next_block: Option<@mut BasicBlock>,
+
+    /// The target basic block for a condiditional (Iftrue) branch.
     conditional_block: Option<@mut BasicBlock>,
+
+    /// The instructions within the basic block.
     opcodes: ~[Opcode],
+
+    /// The JIT Label that marks the start of this basic block.
     label: ~Label
 }
 
@@ -27,6 +43,9 @@ impl Eq for BasicBlock {
 }
 
 impl BasicBlock {
+    /**
+     * Creates a new BasicBlock.
+     */
     pub fn new() -> @mut BasicBlock {
         @mut BasicBlock {
             prev_blocks: ~[],
@@ -37,10 +56,16 @@ impl BasicBlock {
         }
     }
 
+    /**
+     * Pushes an Opcode to the end of the basic block.
+     */
     pub fn push_opcode(&mut self, opcode: Opcode) {
         self.opcodes.push(opcode);
     }
 
+    /**
+     * Prints a basic block for diagnostic purposes.
+     */
     pub fn print(&self) {
         println(fmt!("BasicBlock: 0x%X", to_unsafe_ptr(self) as uint));
         
@@ -70,7 +95,15 @@ impl BasicBlock {
     }
 }
 
-
+/**
+ * Computes the basic blocks for a stream of Opcodes.
+ * 
+ * # Arguments
+ *
+ * * function - The function to compute a basic block representation of.
+ *
+ * Returns a list of basic blocks.
+ */
 pub fn get_basic_blocks(function: &[Opcode]) -> ~[@mut BasicBlock] {
     let mut basic_blocks_map = TrieMap::new();
     basic_blocks_map.insert(0u, BasicBlock::new());
@@ -143,6 +176,10 @@ pub fn get_basic_blocks(function: &[Opcode]) -> ~[@mut BasicBlock] {
     return basic_blocks;
 }
 
+/**
+ * Prints a list of basic blocks for diagnostic purposes.
+ * @type {[type]}
+ */
 pub fn print_basic_blocks(basic_blocks: &[@mut BasicBlock]) {
     for basic_block in basic_blocks.iter() {
         basic_block.print();

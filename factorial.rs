@@ -25,19 +25,19 @@ fn main() {
         Store(1),           // 
                             //
         // if n <= 1 go end //
-        Loadf32(0),            // <---------
+        Loadf32(0),         // <---------
         Constf32(1f32),     //          |
         Leq,                //          |
         Iftrue(17),         // ------   |
                             //      |   |
         // f := n * f       //      |   |
-        Loadf32(0),            //      |   |
-        Loadf32(1),            //      |   |
+        Loadf32(0),         //      |   |
+        Loadf32(1),         //      |   |
         Multiply,           //      |   |
         Store(1),           //      |   |
                             //      |   |
         // n := n - 1       //      |   |
-        Loadf32(0),            //      |   |
+        Loadf32(0),         //      |   |
         Constf32(1f32),     //      |   |
         Subtract,           //      |   |
         Store(0),           //      |   |
@@ -46,7 +46,7 @@ fn main() {
         Jmp(4),             // -----+----
                             //      |
         // return f         //      |
-        Loadf32(1),            // <-----
+        Loadf32(1),         // <-----
         Ret                 //
     ];
 
@@ -63,7 +63,7 @@ fn main() {
     println("");
 
     let args: ~[*c_void] = ~[];
-    let mut retval: ~i32 = ~0;
+    let mut retval: ~f32 = ~0f32;
     function.apply(args, retval);
 
     println("Returned:");
@@ -72,7 +72,7 @@ fn main() {
     println("");
     println("Closure factorial(10)...");
 
-    let f: extern "C" fn() -> c_int = function.closure();
+    let f: extern "C" fn() -> c_float = function.closure();
     let ret = f();
 
     println(fmt!("%?", ret));

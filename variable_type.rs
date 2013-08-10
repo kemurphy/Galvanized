@@ -1,4 +1,7 @@
 
+/**
+ * VM primitive types.
+ */
 #[deriving(Clone)]
 #[deriving(Eq)]
 pub enum VariableType {

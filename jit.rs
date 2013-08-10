@@ -17,23 +17,21 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
     context.build_start();
 
     // TODO: at the moment, functions take no arguments and return a single float.
-    let return_type = Types::get_int();
+    let return_type = Types::get_float32();
     let params: &[&Type] = &[];
     let signature = Type::create_signature(CDECL, return_type, params);
 
     let jit_function = context.create_function(signature);
 
+    // Convert stream of opcodes to basic block representation.
     let basic_blocks = get_basic_blocks(function);
 
+    // Pre-create Values for each local variable.
     let mut locals = reserve_locals(function, basic_blocks, jit_function);
 
     for basic_block in basic_blocks.iter() {
         compile_basic_block(*basic_block, jit_function, &mut locals);
     }
-
-    /*for index in range(0, annotated_function.len()) {
-        compile_opcode(&mut annotated_function, index, jit_function, &mut stack, &mut locals);
-    }*/
 
     jit_function.compile();
     context.build_end();
@@ -41,18 +39,31 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
     jit_function
 }
 
+/**
+ * JIT compiles a single basic block.
+ * 
+ * # Arguments
+ *
+ * * basic_block - The basic block to compile.
+ * * function    - The function that is being compiled.
+ * * context     - The JIT context within which to compile the function.
+ */
 fn compile_basic_block(basic_block: @mut BasicBlock, 
                        function: &Function, 
                        locals: &mut ~[~Value]) {
 
+    // The evaluation stack must be empty on entering a basic block.
     let mut stack = ~[];
 
+    // Create a Label for this basic block.
     function.insn_set_label(basic_block.label);
 
     for opcode in basic_block.opcodes.iter() {
         compile_opcode(opcode, function, &mut stack, locals);
     }
 
+    // If the basic block ends in a conditional branch (Iftrue),
+    // emit a conditional branch JIT instruction here.
     match basic_block.conditional_block {
         Some(b) => {
             let value = stack.pop();
@@ -60,6 +71,10 @@ fn compile_basic_block(basic_block: @mut BasicBlock,
         }
     _   => { }
     }
+
+    // If the basic block has a successor, emit a JIT branch
+    // instruction. LibJIT (hopefully) optimises these out
+    // if they are unnecessary.
     match basic_block.next_block {
         Some(b) => {
             function.insn_branch(b.label);
@@ -73,11 +88,10 @@ fn compile_basic_block(basic_block: @mut BasicBlock,
  * 
  * # Arguments
  *
- * * annotated_function - The annotated function.
- * * index             - The index of the opcode in the annotated program to compile.
- * * function          - The JIT function object.
- * * stack             - The VM stack.
- * * locals            - The list of the function's local variable Values.
+ * * opcode   - The Opcode to compile.
+ * * function - The JIT function object.
+ * * stack    - The VM stack.
+ * * locals   - The list of the function's local variable Values.
  */
 fn compile_opcode(opcode: &Opcode,
                   function: &Function, 
@@ -163,11 +177,13 @@ fn compile_opcode(opcode: &Opcode,
  * Pre-creates some JIT Values for use as the local variables in a function.
  *
  * * function     - The function to pre-create JIT Values for.
+ * * basic_blocks - The basic block representation of the function.
  * * jit_function - The JIT function object to create values for.
  *
  * Returns the list of pre-created local variable Values.
  */
 fn reserve_locals(function: &[Opcode], basic_blocks: &[@mut BasicBlock], jit_function: &Function) -> ~[~Value] {
+    // TODO: count from basic blocks instead.
     let local_count = local_count(function);
 
     let types = infer_local_types(basic_blocks, local_count);
