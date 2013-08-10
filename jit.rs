@@ -36,22 +36,49 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
 
     let jit_function = context.create_function(signature);
 
-    let mut stack = ~[];
     let mut locals = reserve_locals(function, jit_function);
 
-    let mut annotated_function = annotate_labels(function);
-
     let basic_blocks = get_basic_blocks(function);
-    print_basic_blocks(basic_blocks);
 
-    for index in range(0, annotated_function.len()) {
-        compile_opcode(&mut annotated_function, index, jit_function, &mut stack, &mut locals);
+    for basic_block in basic_blocks.iter() {
+        compile_basic_block(*basic_block, jit_function, &mut locals);
     }
+
+    /*for index in range(0, annotated_function.len()) {
+        compile_opcode(&mut annotated_function, index, jit_function, &mut stack, &mut locals);
+    }*/
 
     jit_function.compile();
     context.build_end();
 
     jit_function
+}
+
+fn compile_basic_block(basic_block: @mut BasicBlock, 
+                       function: &Function, 
+                       locals: &mut ~[~Value]) {
+
+    let mut stack = ~[];
+
+    function.insn_set_label(basic_block.label);
+
+    for opcode in basic_block.opcodes.iter() {
+        compile_opcode(opcode, function, &mut stack, locals);
+    }
+
+    match basic_block.conditional_block {
+        Some(b) => {
+            let value = stack.pop();
+            function.insn_branch_if(value, b.label);
+        }
+    _   => { }
+    }
+    match basic_block.next_block {
+        Some(b) => {
+            function.insn_branch(b.label);
+        }
+    _   => { /* TODO must end in a Ret? */ }
+    }
 }
 
 /**
@@ -65,22 +92,12 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
  * * stack             - The VM stack.
  * * locals            - The list of the function's local variable Values.
  */
-fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode], 
-                  index: uint, 
+fn compile_opcode(opcode: &Opcode,
                   function: &Function, 
                   stack: &mut ~[~Value], 
                   locals: &mut ~[~Value]) {
 
-    // If this instruction is the target of a branch, create a label.
-    match annotated_function[index].jmp_from {
-        Some(_) => {
-            function.insn_set_label(annotated_function[index].label);
-        }
-        _ => ()
-    }
-
-    let opcode = annotated_function[index].opcode;
-    match opcode {
+    match *opcode {
         Constf32(operand) => {
             stack.push(function.constant_float32(operand)); 
         }
@@ -151,14 +168,7 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
             let new_value = function.insn_dup(v);
             stack.push(new_value);
         }
-        Jmp(n) => {
-            function.insn_branch(annotated_function[n].label);
-        }
-        Iftrue(n) => {
-            let value = stack.pop();
-            function.insn_branch_if(value, annotated_function[n].label);
-        }
-        Nop => { }
+        _ => { }
     }
 }
 
@@ -176,38 +186,6 @@ fn reserve_locals(function: &[Opcode], jit_function: &Function) -> ~[~Value] {
         jit_function.create_value(Types::get_int())
     };
     return locals;
-}
-
-/**
- * Annotates a function with labels representing the start of basic blocks.
- *
- * # Arguments
- * 
- * * function - The function to annotate.
- *
- * Returns the annotated function.
- */
-fn annotate_labels(function: &[Opcode]) -> ~[~AnnotatedOpcode] {
-    let mut annotated_function: ~[~AnnotatedOpcode] = vec::from_fn(function.len(), |i| {
-        ~AnnotatedOpcode { opcode: function[i], jmp_to: None, jmp_from: None, label: Label::new()  }
-    });
-
-    let mut index = 0;
-    for opcode in function.iter() {
-        match *opcode {
-            Jmp(n) => {
-                annotated_function[index].jmp_to = Some(n);
-                annotated_function[n].jmp_from = Some(index);
-            }
-            Iftrue(n) => {
-                annotated_function[index].jmp_to = Some(n);
-                annotated_function[n].jmp_from = Some(index);
-            }
-            _ => ()
-        }
-        index += 1;
-    }
-    return annotated_function;
 }
 
 /**

@@ -2,12 +2,14 @@
 use opcode::*;
 use std::trie::*;
 use std::ptr::*;
+use libjit::*;
 
 struct BasicBlock {
     prev_blocks: ~[@mut BasicBlock],
     next_block: Option<@mut BasicBlock>,
     conditional_block: Option<@mut BasicBlock>,
-    opcodes: ~[Opcode]
+    opcodes: ~[Opcode],
+    label: ~Label
 }
 
 impl BasicBlock {
@@ -16,7 +18,8 @@ impl BasicBlock {
             prev_blocks: ~[],
             conditional_block: None,
             next_block: None,
-            opcodes: ~[]
+            opcodes: ~[],
+            label: Label::new()
         }
     }
 
@@ -24,7 +27,7 @@ impl BasicBlock {
         self.opcodes.push(opcode);
     }
 
-    pub fn print(&self) {
+    pub fn print(@mut self) {
         println(fmt!("BasicBlock: 0x%X", to_unsafe_ptr(self) as uint));
         
         println("prev_blocks:");
@@ -95,16 +98,23 @@ pub fn get_basic_blocks(function: &[Opcode]) -> ~[@mut BasicBlock] {
                 current_block.next_block = Some(**next_block.get_ref());
                 current_block = **next_block.get_ref();
             }
-            _ => { 
-                let temp = basic_blocks_map.find(&index);
-                match temp {
-                    Some(b) => { 
-                        current_block.next_block = Some(*b);
-                        b.prev_blocks.push(current_block);
-                        current_block = *b; 
-                    }
-                    _ => { }
-                }  
+            _ => {
+                if (index != 0) {
+                    let temp = basic_blocks_map.find(&index);
+                    match temp {
+                        Some(b) => {
+                            match current_block.next_block {
+                                None => {
+                                    current_block.next_block = Some(*b);
+                                    b.prev_blocks.push(current_block);
+                                }
+                                _ => { }
+                            }
+                            current_block = *b; 
+                        }
+                        _ => { }
+                    }  
+                }
                 current_block.push_opcode(*opcode); 
             }
         }
@@ -119,7 +129,7 @@ pub fn get_basic_blocks(function: &[Opcode]) -> ~[@mut BasicBlock] {
     return basic_blocks;
 }
 
-pub fn print_basic_blocks(basic_blocks: ~[@mut BasicBlock]) {
+pub fn print_basic_blocks(basic_blocks: &[@mut BasicBlock]) {
     for basic_block in basic_blocks.iter() {
         basic_block.print();
     }    
