@@ -5,20 +5,6 @@ use std::vec;
 use basic_block::*;
 
 /**
- * Represents a single opcode with additional annotations.
- */
-struct AnnotatedOpcode {
-    /// The instruction opcode.
-    opcode: Opcode,
-    /// Index of instruction that targets this one.
-    jmp_from: Option<u32>,
-    /// Index of instruction that this one targets.
-    jmp_to: Option<u32>,
-    /// Label representing the instruction.
-    label: ~Label,
-}
-
-/**
  * JIT compiles a function.
  * 
  * # Arguments
