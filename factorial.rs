@@ -8,6 +8,7 @@ mod libjit;
 mod opcode;
 mod interpret;
 mod jit;
+mod basic_block;
 mod analysis;
 
 fn main() {

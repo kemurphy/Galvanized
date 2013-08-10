@@ -116,41 +116,15 @@ fn interpret_opcode(opcode: &Opcode, stack: &mut ~[f32], environment: &mut Envir
             return n;
         }
         Iftrue(n) => {
-            return do conditional_branch(stack, n, environment) |value| { (value as bool) };
-        }
-        Iffalse(n) => {
-            return do conditional_branch(stack, n, environment) |value| { !(value as bool) };
+            let value = stack.pop();
+            if value as bool {
+                return n;
+            } 
         }
         Nop => { }
     }
     
     environment.ip + 1
-}
-
-/**
- * Helper function for a conditional branch opcode.
- *
- * # Arguments
- *
- * * stack          - The VM runtime stack.
- * * target_address - The address to branch to if the specified condition is true.
- * * environment    - The current runtime environment state of the VM.
- * * f              - A function that takes two values from the stack and returns a bool.
- *
- * Returns the new value of the instruction pointer.
- */
-fn conditional_branch(stack: &mut ~[f32], 
-                      target_address: u32, 
-                      environment: &mut Environment,
-                      f: &fn(value: f32) -> bool)
-                      -> u32 {
-
-    let value = stack.pop();
-    if f(value) {
-        target_address
-    } else {
-        environment.ip + 1
-    }
 }
 
 /**

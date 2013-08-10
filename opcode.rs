@@ -1,6 +1,7 @@
 /**
  * The VM instruction opcodes.
  */
+#[deriving(ToStr)]
 pub enum Opcode {
     /// No operation
     Nop,
@@ -53,6 +54,5 @@ pub enum Opcode {
     /// Conditional branches - pops 2 values from
     /// the stack and jumps to the specified 
     /// address if the condition is satisfied.
-    Iftrue(u32),
-    Iffalse(u32)
+    Iftrue(u32)
 }

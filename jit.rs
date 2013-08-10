@@ -2,6 +2,7 @@ use opcode::*;
 use libjit::*;
 use analysis::*;
 use std::vec;
+use basic_block::*;
 
 /**
  * Represents a single opcode with additional annotations.
@@ -40,10 +41,11 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
 
     let mut annotated_function = annotate_labels(function);
 
-    let mut index = 0;
-    while index < annotated_function.len() {
-        compile_opcode(&mut annotated_function, index, jit_function, &mut stack, &mut locals);      
-        index += 1;
+    let basic_blocks = get_basic_blocks(function);
+    print_basic_blocks(basic_blocks);
+
+    for index in range(0, annotated_function.len()) {
+        compile_opcode(&mut annotated_function, index, jit_function, &mut stack, &mut locals);
     }
 
     jit_function.compile();
@@ -153,10 +155,8 @@ fn compile_opcode(annotated_function: &mut ~[~AnnotatedOpcode],
             function.insn_branch(annotated_function[n].label);
         }
         Iftrue(n) => {
-            do conditional_branch(annotated_function, stack, n) |value, label| { function.insn_branch_if(value, label) };
-        }
-        Iffalse(n) => {
-            do conditional_branch(annotated_function, stack, n) |value, label| { function.insn_branch_if_not(value, label) };
+            let value = stack.pop();
+            function.insn_branch_if(value, annotated_function[n].label);
         }
         Nop => { }
     }
@@ -199,7 +199,7 @@ fn annotate_labels(function: &[Opcode]) -> ~[~AnnotatedOpcode] {
                 annotated_function[index].jmp_to = Some(n);
                 annotated_function[n].jmp_from = Some(index);
             }
-            Iftrue(n) | Iffalse(n) => {
+            Iftrue(n) => {
                 annotated_function[index].jmp_to = Some(n);
                 annotated_function[n].jmp_from = Some(index);
             }
@@ -239,26 +239,4 @@ fn binary_opcode(stack: &mut ~[~Value], f: &fn(v1: &Value, v2: &Value) -> ~Value
 fn unary_opcode(stack: &mut ~[~Value], f: &fn(value: &Value) -> ~Value) {
     let value = stack.pop();
     stack.push(f(value));
-}
-
-/**
- * Helper function for a conditional branch opcode.
- *
- * Pops 2 Values from the stack and branches if they meet the specified condition.
- *
- * # Arguments
- *
- * * annotated_function - The annotated function.
- * * stack              - The VM stack.
- * * target_address     - The address to branch to if the condition is satisfied.
- * * function           - The JIT function object.
- * * f                  - A function that takes two Values from the stack and returns a result Value.
- */
-fn conditional_branch(annotated_function: &mut ~[~AnnotatedOpcode], 
-                      stack: &mut ~[~Value],
-                      target_address: u32,
-                      f: &fn(value: &Value, label: &mut Label)) {
-
-    let value = stack.pop();
-    f(value, annotated_function[target_address].label);
 }
