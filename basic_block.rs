@@ -3,13 +3,28 @@ use opcode::*;
 use std::trie::*;
 use std::ptr::*;
 use libjit::*;
+use std::to_bytes::*;
+use std::hash::*;
 
+#[Deriving(Hash)]
 struct BasicBlock {
     prev_blocks: ~[@mut BasicBlock],
     next_block: Option<@mut BasicBlock>,
     conditional_block: Option<@mut BasicBlock>,
     opcodes: ~[Opcode],
     label: ~Label
+}
+
+impl IterBytes for BasicBlock {
+    pub fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        (to_unsafe_ptr(self) as u64).iter_bytes(lsb0, f)
+    }
+}
+
+impl Eq for BasicBlock {
+    pub fn eq(&self, other: &BasicBlock) -> bool {
+        return self.hash() == other.hash();
+    }
 }
 
 impl BasicBlock {
