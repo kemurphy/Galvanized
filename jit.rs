@@ -3,6 +3,7 @@ use libjit::*;
 use analysis::*;
 use std::vec;
 use basic_block::*;
+use variable_type::*;
 
 /**
  * JIT compiles a function.
@@ -16,15 +17,15 @@ pub fn compile(function: &[Opcode], context: &Context) -> ~Function {
     context.build_start();
 
     // TODO: at the moment, functions take no arguments and return a single float.
-    let return_type = Types::get_float32();
+    let return_type = Types::get_int();
     let params: &[&Type] = &[];
     let signature = Type::create_signature(CDECL, return_type, params);
 
     let jit_function = context.create_function(signature);
 
-    let mut locals = reserve_locals(function, jit_function);
-
     let basic_blocks = get_basic_blocks(function);
+
+    let mut locals = reserve_locals(function, basic_blocks, jit_function);
 
     for basic_block in basic_blocks.iter() {
         compile_basic_block(*basic_block, jit_function, &mut locals);
@@ -166,10 +167,13 @@ fn compile_opcode(opcode: &Opcode,
  *
  * Returns the list of pre-created local variable Values.
  */
-fn reserve_locals(function: &[Opcode], jit_function: &Function) -> ~[~Value] {
-    let local_count = local_count(function) as uint;
-    let locals: ~[~Value] = do vec::from_fn(local_count) |_| {
-        jit_function.create_value(Types::get_int())
+fn reserve_locals(function: &[Opcode], basic_blocks: &[@mut BasicBlock], jit_function: &Function) -> ~[~Value] {
+    let local_count = local_count(function);
+
+    let types = infer_local_types(basic_blocks, local_count);
+
+    let locals: ~[~Value] = do vec::from_fn(local_count as uint) |index| {
+        jit_function.create_value( if types[index] == Float32 { Types::get_float32() } else { Types::get_int() })
     };
     return locals;
 }

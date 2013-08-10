@@ -1,4 +1,3 @@
-
 use opcode::*;
 use std::trie::*;
 use std::ptr::*;
