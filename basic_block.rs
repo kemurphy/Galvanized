@@ -27,7 +27,7 @@ impl BasicBlock {
         self.opcodes.push(opcode);
     }
 
-    pub fn print(@mut self) {
+    pub fn print(&self) {
         println(fmt!("BasicBlock: 0x%X", to_unsafe_ptr(self) as uint));
         
         println("prev_blocks:");
